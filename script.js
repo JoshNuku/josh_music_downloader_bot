@@ -1,6 +1,21 @@
 const { google } = require("googleapis");
 const { chat } = require("googleapis/build/src/apis/chat");
 require("dotenv").config();
+const ytdl = require("ytdl-core");
+const ffmpeg = require("./ffmpeg");
+
+function downloadAudioFromYouTube(url) {
+  return new Promise((resolve, reject) => {
+    const stream = ytdl(url, { quality: "highestaudio" });
+    const outputPath = "audio.mp3";
+
+    ffmpeg(stream)
+      .audioBitrate(128)
+      .save(outputPath)
+      .on("end", () => resolve(outputPath))
+      .on("error", (err) => reject(err));
+  });
+}
 const TelegramBot = require("node-telegram-bot-api");
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
   polling: true,
@@ -18,8 +33,8 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(
     chatId,
-    `Hello! Welcome to Josh's music downloader bot.
-Search any song by name and artiste and click the link to download`
+    `Hello! Welcome to Josh's Audio Bot.
+Search any song by name and artiste.`
   );
 });
 bot.on("message", async (msg) => {
@@ -32,6 +47,7 @@ bot.on("message", async (msg) => {
       part: "snippet",
       q: searchQuery,
       type: "video",
+      maxResults: 1,
     };
 
     // Make the API request
@@ -46,18 +62,28 @@ bot.on("message", async (msg) => {
       videos.forEach(async (video) => {
         const videoTitle = await video.snippet.title;
         const videoId = await video.id.videoId;
-        const videoLink = `https://www.azyoutube.com/watch?v=${videoId}`;
+        const videoLink = `https://www.youtube.com/watch?v=${videoId}`;
         const imageUrl = await video.snippet.thumbnails.default.url;
+        try {
+          const audioPath = await downloadAudioFromYouTube(videoLink);
+          await bot.sendAudio(chatId, audioPath);
+          bot.sendPhoto(chatId, imageUrl, {
+            caption: `${videoTitle} `,
+            parse_mode: "Markdown",
+          });
+        } catch (err) {
+          bot.sendMessage(
+            chatId,
+            "Error occurred while processing the YouTube video."
+          );
+          console.error(err);
+        }
 
         console.log("Title:", videoTitle);
         console.log("Video ID:", videoId);
         console.log("Video Link:", videoLink);
         console.log("Thumbnail URL:", video.snippet.thumbnails.default.url);
         console.log("----------------------------------------");
-        bot.sendPhoto(chatId, imageUrl, {
-          caption: `${videoTitle} ------ Download here ${videoLink}`,
-          parse_mode: "Markdown",
-        });
       });
     });
   }
