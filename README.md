@@ -1,1 +1,1 @@
-### simple music bot downloader
+### Simple Telegram music downloader bot
