@@ -1,6 +1,8 @@
 const { google } = require("googleapis");
 const TelegramBot = require("node-telegram-bot-api");
-const bot = new TelegramBot("YOUR_API_TOKEN", { polling: true });
+const bot = new TelegramBot("6887856184:AAFKdStAjli3liT6LSL2rO-QZZtzYJPBt2Y", {
+  polling: true,
+});
 let videoLink, imageUrl, videoTitle;
 
 // Create a new YouTube client
