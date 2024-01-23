@@ -1,8 +1,8 @@
 const { google } = require("googleapis");
-//const { chat } = require("googleapis/build/src/apis/chat");
-require("dotenv").config();
 const ytdl = require("ytdl-core");
 const ffmpeg = require("./ffmpeg");
+require("dotenv").config(); //environment variables
+const TelegramBot = require("node-telegram-bot-api");
 
 function downloadAudioFromYouTube(url, title) {
   return new Promise((resolve, reject) => {
@@ -19,7 +19,8 @@ function downloadAudioFromYouTube(url, title) {
       .on("error", (err) => reject(err));
   });
 }
-const TelegramBot = require("node-telegram-bot-api");
+
+//create a new bot
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
   polling: true,
 });
@@ -27,11 +28,10 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
 // Create a new YouTube client
 const youtube = google.youtube({
   version: "v3",
-  auth: process.env.YOUTUBE_API_KEY, // Replace with your actual API key
+  auth: process.env.YOUTUBE_API_KEY,
 });
 
-// Set the API parameters
-
+// Set the bot API parameters
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(
@@ -40,10 +40,10 @@ bot.onText(/\/start/, (msg) => {
 Search any song by name and artiste.`
   );
 });
+
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const searchQuery = msg.text;
-  console.log(msg);
   if (searchQuery[0] !== "/") {
     // Define the search query
     const params = {
@@ -63,15 +63,17 @@ bot.on("message", async (msg) => {
       // Process the response
       const videos = await response.data.items;
       videos.forEach(async (video) => {
-        const videoTitle = await video.snippet.title;
-        const videoId = await video.id.videoId;
+        const videoTitle = video.snippet.title;
+        const videoId = video.id.videoId;
         const videoLink = `https://www.youtube.com/watch?v=${videoId}`;
-        const imageUrl = await video.snippet.thumbnails.high.url;
+        const imageUrl = video.snippet.thumbnails.high.url;
         try {
           const audioPath = await downloadAudioFromYouTube(
             videoLink,
             videoTitle
           );
+
+          //send auidio and photo
           await bot.sendAudio(chatId, audioPath);
           bot.sendPhoto(chatId, imageUrl, {
             caption: `${videoTitle} `,
@@ -80,7 +82,7 @@ bot.on("message", async (msg) => {
         } catch (err) {
           bot.sendMessage(
             chatId,
-            "Error occurred while processing the YouTube video."
+            "Uh oh an error occurred while processing your song!."
           );
           console.error(err);
         }
