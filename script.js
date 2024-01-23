@@ -1,13 +1,16 @@
 const { google } = require("googleapis");
-const { chat } = require("googleapis/build/src/apis/chat");
+//const { chat } = require("googleapis/build/src/apis/chat");
 require("dotenv").config();
 const ytdl = require("ytdl-core");
 const ffmpeg = require("./ffmpeg");
 
-function downloadAudioFromYouTube(url) {
+function downloadAudioFromYouTube(url, title) {
   return new Promise((resolve, reject) => {
     const stream = ytdl(url, { quality: "highestaudio" });
-    const outputPath = "audio.mp3";
+    const outputPath = `${title
+      .split(" ")
+      .join("")
+      .replace(/[<>:"\/\\|?*\x00-\x1F]/g, "_")}.mp3`;
 
     ffmpeg(stream)
       .audioBitrate(128)
@@ -63,9 +66,12 @@ bot.on("message", async (msg) => {
         const videoTitle = await video.snippet.title;
         const videoId = await video.id.videoId;
         const videoLink = `https://www.youtube.com/watch?v=${videoId}`;
-        const imageUrl = await video.snippet.thumbnails.default.url;
+        const imageUrl = await video.snippet.thumbnails.high.url;
         try {
-          const audioPath = await downloadAudioFromYouTube(videoLink);
+          const audioPath = await downloadAudioFromYouTube(
+            videoLink,
+            videoTitle
+          );
           await bot.sendAudio(chatId, audioPath);
           bot.sendPhoto(chatId, imageUrl, {
             caption: `${videoTitle} `,
